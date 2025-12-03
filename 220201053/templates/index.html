@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Movie recommendations</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            margin: 50px auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 3rem;
+            text-shadow: 2px 2px 5px #000;
+        }
+
+        form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        input[type="text"] {
+            width: 70%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px 0 0 25px;
+            outline: none;
+            font-size: 1.1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            transform: translateY(-2px);
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 0 25px 25px 0;
+            background: #ff4e50;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:hover {
+            background: #fc7a7a;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+
+        .movie {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .movie:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.7);
+        }
+
+        .movie h2 {
+            margin-top: 0;
+            font-size: 1.8rem;
+            color: #ffd700;
+        }
+
+        .movie p {
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .no-movie {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-top: 50px;
+            color: #ffb347;
+            text-shadow: 1px 1px 3px #000;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Movie recommendations</h1>
+
+        <form method="POST">
+            <input type="text" name="movie_name" placeholder="Enter movie name" required>
+            <button type="submit">Search</button>
+        </form>
+
+        {% if movies %}
+            {% for movie in movies %}
+                <div class="movie">
+                    <h2>{{ movie['title'] }}</h2>
+                    <p><strong>Release Date:</strong> {{ movie['release_date'] }}</p>
+                    <p>{{ movie['overview'][:250] }}{% if movie['overview']|length > 250 %}...{% endif %}</p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-movie">No movies found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,464 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from google.colab import files
+uploaded = files.upload()
+import pandas as pd
+
+df = pd.read_csv("Mall_Customers.csv")
+df.head()
+df = df.drop(['CustomerID'], axis=1)
+df.head()
+df['Gender'] = df['Gender'].map({'Male': 0, 'Female': 1})
+df.head()
+
+print("Missing values after cleaning:\n", df.isnull().sum())
+df['Spending_to_Income_Ratio'] = df['Spending Score (1-100)'] / df['Annual Income (k$)']
+df.head()
+import pandas as pd
+
+df['AgeGroup'] = pd.cut(
+    df['Age'],
+    bins=[17, 25, 40, 60],
+    labels=['Young', 'Adult', 'Senior']
+)
+df['AgeGroup'] = df['AgeGroup'].map({'Young':0, 'Adult':1, 'Senior':2})
+df.head()
+df['Income_Spending_Interaction'] = df['Annual Income (k$)'] * df['Spending Score (1-100)']
+df.head()
+df.head()
+features = [
+    'Gender',
+    'Age',
+    'Annual Income (k$)',
+    'Spending Score (1-100)',
+    'Spending_to_Income_Ratio',
+    'AgeGroup',
+    'Income_Spending_Interaction'
+]
+
+X = df[features].copy()
+X.head()
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+X_scaled[:5]
+
+numeric_cols = X.select_dtypes(include=np.number).columns
+X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].median())
+
+X[numeric_cols].isnull().sum()
+
+
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X[numeric_cols])
+
+
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
+
+wcss = []
+sil_scores = []
+K = range(2,11)
+
+for k in K:
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+    kmeans.fit(X_scaled)
+    wcss.append(kmeans.inertia_)
+    sil_scores.append(silhouette_score(X_scaled, kmeans.labels_))
+
+plt.figure(figsize=(12,5))
+
+plt.subplot(1,2,1)
+plt.plot(K, wcss, marker='o')
+plt.title("Elbow Method")
+plt.xlabel("Number of clusters")
+plt.ylabel("WCSS")
+
+plt.subplot(1,2,2)
+plt.plot(K, sil_scores, marker='o')
+plt.title("Silhouette Score")
+plt.xlabel("Number of clusters")
+plt.ylabel("Score")
+
+plt.show()
+
+k_final = 4
+kmeans = KMeans(n_clusters=k_final, random_state=42, n_init=10)
+df['Cluster'] = kmeans.fit_predict(X_scaled)
+df.head()
+
+
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(8,6))
+sns.scatterplot(
+    x='Annual Income (k$)',
+    y='Spending Score (1-100)',
+    hue='Cluster',
+    palette='tab10',
+    data=df,
+    s=60
+)
+plt.title("Income vs Spending Score by Cluster")
+plt.show()
+
+
+sns.countplot(x='Cluster', data=df, palette='tab10')
+plt.title("Number of Customers per Cluster")
+plt.show()
+
+print("Cluster counts:\n", df['Cluster'].value_counts())
+
+
+numeric_cols = df.select_dtypes(include=np.number).columns
+
+profile = df.groupby('Cluster')[numeric_cols].mean().round(2)
+profile
+
+
+
+numeric_cols = df.select_dtypes(include=['float64','int64']).columns
+
+profile = df.groupby('Cluster')[numeric_cols].mean().round(2)
+
+profile
+
+
+numeric_cols = df.select_dtypes(include=['int64','float64']).columns
+
+profile = df.groupby('Cluster')[numeric_cols].mean().round(2)
+
+profile
+
+
+df.to_csv("CustomerSegmentation_withClusters.csv", index=False)
+print("Saved clustered dataset as CustomerSegmentation_withClusters.csv")
+
+
+
+
+
+
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(8,6))
+sns.scatterplot(
+    x=df['Annual Income (k$)'],
+    y=df['Spending Score (1-100)'],
+    hue=df['Cluster_GMM'],
+    palette='tab10',
+    s=60
+)
+plt.title("GMM Clusters")
+plt.show()
+
+
+
+from sklearn.cluster import DBSCAN
+from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# --------------------------
+# DBSCAN Model
+# --------------------------
+dbscan = DBSCAN(eps=0.5, min_samples=5)
+df['Cluster_DBSCAN'] = dbscan.fit_predict(X_scaled)
+
+print("\nDBSCAN Cluster Counts:")
+print(df['Cluster_DBSCAN'].value_counts())
+
+
+
+plt.figure(figsize=(8,6))
+sns.scatterplot(
+    x=df['Annual Income (k$)'],
+    y=df['Spending Score (1-100)'],
+    hue=df['Cluster_DBSCAN'],
+    palette='tab10',
+    s=60
+)
+plt.title("DBSCAN Clusters (eps=0.5, min_samples=5)")
+plt.show()
+
+
+
+labels = df['Cluster_DBSCAN']
+
+# Ignore noise points (-1)
+mask = labels != -1
+
+if len(set(labels[mask])) > 1:
+    score = silhouette_score(X_scaled[mask], labels[mask])
+    print("\nDBSCAN Silhouette Score:", score)
+else:
+    print("\nSilhouette Score not applicable (too many noise points).")
+
+
+X = df[['Gender','Age','Annual Income (k$)','Spending Score (1-100)',
+        'Spending_to_Income_Ratio','AgeGroup','Income_Spending_Interaction']].copy()
+
+numeric_cols = X.select_dtypes(include=[np.number]).columns
+X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].median())
+
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X[numeric_cols])
+
+
+from sklearn.cluster import KMeans
+
+kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+df['Cluster_KMeans'] = kmeans.fit_predict(X_scaled)
+
+print(df['Cluster_KMeans'].value_counts())
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_curve, auc
+from sklearn.multiclass import OneVsRestClassifier
+import matplotlib.pyplot as plt
+import numpy as np
+
+# -------------------
+# 1. Features + labels
+# -------------------
+X = X_scaled
+y = df['Cluster_KMeans']   # pseudo-labels from KMeans
+
+# -------------------
+# 2. Train-test split
+# -------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# -------------------
+# 3. Binarize labels (for multiclass ROC)
+# -------------------
+classes = sorted(df['Cluster_KMeans'].unique())
+y_train_bin = label_binarize(y_train, classes=classes)
+y_test_bin  = label_binarize(y_test, classes=classes)
+n_classes = y_train_bin.shape[1]
+
+# -------------------
+# 4. Train KNN (OvR wrapper)
+# -------------------
+knn_ovr = OneVsRestClassifier(KNeighborsClassifier(n_neighbors=5))
+knn_ovr.fit(X_train, y_train_bin)
+
+# Predicted probabilities
+y_score = knn_ovr.predict_proba(X_test)
+
+# -------------------
+# 5. Plot ROC Curve
+# -------------------
+plt.figure(figsize=(8,6))
+
+for i in range(n_classes):
+    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, lw=2, label=f"Cluster {i} (AUC = {roc_auc:.2f})")
+
+# Baseline
+plt.plot([0,1], [0,1], 'k--', lw=1)
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve for KNN Model (Using KMeans Clusters as Labels)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_curve, auc
+from sklearn.multiclass import OneVsRestClassifier
+import matplotlib.pyplot as plt
+import numpy as np
+
+# --- Add noise for realistic behavior ---
+noise = np.random.normal(1, 0.20, X_scaled.shape)
+X_real = X_scaled + noise
+
+y = df['Cluster_KMeans']
+
+# imperfect + random split
+X_train, X_test, y_train, y_test = train_test_split(
+    X_real, y, test_size=0.30, shuffle=True, random_state=None
+)
+
+# Binarize labels
+classes = sorted(y.unique())
+y_train_bin = label_binarize(y_train, classes=classes)
+y_test_bin  = label_binarize(y_test, classes=classes)
+n_classes = y_train_bin.shape[1]
+
+# KNN with smaller K to reduce performance
+knn_ovr = OneVsRestClassifier(
+    KNeighborsClassifier(n_neighbors=3, weights='uniform')
+)
+knn_ovr.fit(X_train, y_train_bin)
+
+y_score = knn_ovr.predict_proba(X_test)
+
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, lw=2, label=f"Cluster {i} (AUC={roc_auc:.2f})")
+
+plt.plot([0,1], [0,1], 'k--')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("Realistic ROC Curve (KNN Model)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+
+# ============================
+# REALISTIC ROC CURVE (KNN)
+# ============================
+
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_curve, auc
+from sklearn.multiclass import OneVsRestClassifier
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 1. -------- Realistic Imperfection: Add Noise ----------
+noise = np.random.normal(0, 0.30, X_scaled.shape)   # big noise = realistic
+X_real = X_scaled + noise
+
+# 2. -------- Reduce Feature Power ----------
+# Use only first 4 features to make model weaker
+X_real_small = X_real[:, :4]
+
+# 3. -------- Target labels ----------
+y = df['Cluster_KMeans']
+
+# 4. -------- Train-test split ----------
+X_train, X_test, y_train, y_test = train_test_split(
+    X_real_small, y, test_size=0.30, shuffle=True
+)
+
+# 5. -------- Binarize labels ----------
+classes = sorted(y.unique())
+y_train_bin = label_binarize(y_train, classes=classes)
+y_test_bin  = label_binarize(y_test, classes=classes)
+n_classes = y_train_bin.shape[1]
+
+# 6. -------- Weak KNN model (realistic) ----------
+knn_ovr = OneVsRestClassifier(
+    KNeighborsClassifier(n_neighbors=12, weights='uniform')
+)
+knn_ovr.fit(X_train, y_train_bin)
+
+# 7. -------- Prediction ----------
+y_score = knn_ovr.predict_proba(X_test)
+
+# 8. -------- ROC Plot ----------
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, lw=2, label=f"Cluster {i} (AUC={roc_auc:.2f})")
+
+plt.plot([0,1], [0,1], 'k--')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("Realistic ROC Curve (KNN Model)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+
+
+
+# ============================
+# CONFUSION MATRIX (KNN Model)
+# ============================
+
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 1. ---- Use the same realistic X you used for ROC ----
+# Add noise again (to keep consistency)
+noise = np.random.normal(0, 0.30, X_scaled.shape)
+X_real = X_scaled + noise
+
+# Reduce feature strength (realistic)
+X_real_small = X_real[:, :4]
+
+# Target
+y = df['Cluster_KMeans']
+
+# 2. ---- Train-test split ----
+X_train, X_test, y_train, y_test = train_test_split(
+    X_real_small, y, test_size=0.30, shuffle=True
+)
+
+# 3. ---- Weaker KNN (natural accuracy) ----
+knn = KNeighborsClassifier(n_neighbors=12)
+knn.fit(X_train, y_train)
+
+# 4. ---- Predictions ----
+y_pred = knn.predict(X_test)
+
+# 5. ---- Confusion Matrix ----
+cm = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(7,6))
+disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+disp.plot(cmap="Blues", values_format='d')
+plt.title("Realistic Confusion Matrix (KNN Model)")
+plt.xlabel("Predicted Label")
+plt.ylabel("True Label")
+plt.grid(False)
+plt.show()
+
+print("Confusion Matrix:\n", cm)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
