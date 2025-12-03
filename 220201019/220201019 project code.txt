@@ -1,0 +1,200 @@
+
+!pip install pandas numpy matplotlib seaborn scikit-learn
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import (
+    classification_report, confusion_matrix, roc_curve, auc,
+    accuracy_score
+)
+
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+
+import warnings
+warnings.filterwarnings("ignore")
+
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+
+df = pd.read_csv('/content/drive/MyDrive/ML_Sessional_Project/parkinsons.csv')
+df.head()
+
+print("Shape:", df.shape)
+df.info()
+df.describe()
+
+# Remove non-numeric column
+numeric_df = df.drop(columns=["name"])
+
+print("\n MEAN VALUES\n", numeric_df.mean())
+print("\n VARIANCE\n", numeric_df.var())
+print("\n STANDARD DEVIATION\n", numeric_df.std())
+print("\n SKEWNESS\n", numeric_df.skew())
+print("\n KURTOSIS\n", numeric_df.kurtosis())
+print("\n COVARIANCE MATRIX\n", numeric_df.cov())
+
+X = df.drop(["status"], axis=1)
+y = df["status"]
+
+print("Feature Matrix Shape:", X.shape)
+print("Feature Vector Shape:", y.shape)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Remove non-numeric column first
+df = df.drop(columns=["name"])
+
+# Separate features and target
+X = df.drop(columns=["status"])
+y = df["status"]
+
+# Split data
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Scale data
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+models = {
+    "SVM (RBF Kernel)": SVC(probability=True, kernel='rbf'),
+    "Logistic Regression": LogisticRegression(),
+    "Random Forest": RandomForestClassifier(n_estimators=200),
+    "KNN": KNeighborsClassifier(n_neighbors=5)
+}
+
+results = {}
+
+for name, model in models.items():
+    print(f"\n TRAINING {name}...\n")
+
+    model.fit(X_train_scaled, y_train)
+
+    y_pred = model.predict(X_test_scaled)
+
+    acc = accuracy_score(y_test, y_pred)
+    print(f"Accuracy: {acc:.4f}")
+
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred))
+
+    cm = confusion_matrix(y_test, y_pred)
+    print("Confusion Matrix:\n", cm)
+
+    # Save results
+    results[name] = acc
+
+from sklearn.metrics import ConfusionMatrixDisplay
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+for name, model in models.items():
+    print(f"\n TRAINING {name}...\n")
+
+    model.fit(X_train_scaled, y_train)
+    y_pred = model.predict(X_test_scaled)
+
+    acc = accuracy_score(y_test, y_pred)
+    print(f"Accuracy: {acc:.4f}")
+
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred))
+
+    cm = confusion_matrix(y_test, y_pred)
+    print("Confusion Matrix:\n", cm)
+
+    # Save results
+    results[name] = acc
+
+    #  VISUAL CONFUSION MATRIX
+    plt.figure(figsize=(5,4))
+    sns.heatmap(cm, annot=True, fmt='d', cmap="Blues",
+                xticklabels=["Healthy (0)", "Parkinson (1)"],
+                yticklabels=["Healthy (0)", "Parkinson (1)"])
+    plt.title(f"Confusion Matrix - {name}")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.show()
+
+plt.figure(figsize=(8,6))
+
+for name, model in models.items():
+    y_prob = model.predict_proba(X_test_scaled)[:,1]
+    fpr, tpr, _ = roc_curve(y_test, y_prob)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=f"{name} (AUC={roc_auc:.3f})")
+
+plt.plot([0,1],[0,1],'--')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC–AUC Curve Comparison")
+plt.legend()
+plt.grid()
+plt.show()
+
+pd.DataFrame(results, index=["Accuracy"]).T
+
+import matplotlib.pyplot as plt
+
+results_df = pd.DataFrame(results, index=["Accuracy"]).T
+
+# Plot bar chart
+plt.figure(figsize=(8,5))
+plt.bar(results_df.index, results_df["Accuracy"])
+plt.xlabel("Models")
+plt.ylabel("Accuracy")
+plt.title("Model Accuracy Comparison")
+plt.xticks(rotation=45)
+plt.ylim(0, 1)   # accuracy ranges from 0 to 1
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+plt.show()
+
+best_model_name = max(results, key=results.get)
+best_model = models[best_model_name]
+
+print(" Best Model:", best_model_name)
+
+import pickle
+
+pickle.dump(best_model, open("best_model.pkl", "wb"))
+pickle.dump(scaler, open("scaler.pkl", "wb"))
+
+import numpy as np
+import pickle
+
+model = pickle.load(open("best_model.pkl", "rb"))
+scaler = pickle.load(open("scaler.pkl", "rb"))
+
+feature_names = X.columns.tolist()
+user_values = []
+
+print("\nEnter values one by one:\n")
+
+for f in feature_names:
+    val = float(input(f"{f}: "))
+    user_values.append(val)
+
+arr = np.asarray(user_values).reshape(1, -1)
+scaled = scaler.transform(arr)
+
+pred = model.predict(scaled)[0]
+
+if pred == 1:
+    print("\n The person HAS Parkinson's disease")
+else:
+    print("\n The person does NOT have Parkinson's disease")
+
